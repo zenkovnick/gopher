@@ -85,6 +85,10 @@ func deleteKey(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		w.WriteHeader(404)
 		return
 	}
+	if err := persistToFile("storage.txt", &storage); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(200) 
 }	
 	
