@@ -16,7 +16,8 @@ import (
 
 //var log = logging.MustGetLogger("example")
 
-var storage map[string]string
+type StorageType map[string]string
+var storage StorageType
 
 type KeyItem struct {
 	Key 		string `json:"key"`
@@ -28,6 +29,7 @@ type Response struct {
   Content   string
 }
 
+
 func addKey(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	var rec KeyItem
 	err := json.NewDecoder(r.Body).Decode(&rec)
@@ -35,7 +37,12 @@ func addKey(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		w.WriteHeader(400)
 		return
 	}
+
 	storage[rec.Key] = rec.Content
+	if err := persistToFile("storage.txt", &storage); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	js, err := json.Marshal(rec)
 	w.WriteHeader(201) 
@@ -67,6 +74,8 @@ func getKey(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
 }
+
+
 
 func deleteKey(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	key := ps.ByName("key")
@@ -102,7 +111,12 @@ func extractFromFile(path string, object interface{}) error {
 
 
 func main() {
-	storage = make(map[string]string)
+
+	err := extractFromFile("storage.txt", &storage)
+	if os.IsNotExist(err) {
+		err = nil
+		storage = make(StorageType)
+	}
 	router := httprouter.New()
 	router.GET("/keys/:key", getKey)
 	router.POST("/keys", addKey)
